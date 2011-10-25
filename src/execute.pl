@@ -10,9 +10,11 @@
 use strict;
 use English;
 use File::stat;
-use Win32::Job;
 use Config::Properties::Simple;
+use Proc::Background;
 use Web_CAT::FeedbackGenerator;
+use Web_CAT::Utilities;
+
 
 #=============================================================================
 # Bring command line args into local variables for easy reference
@@ -175,15 +177,16 @@ sub run_test
     my $show_details = shift;
 
     # Exec program and collect output
-    my $job = Win32::Job->new;
-    $job->spawn( "cmd.exe",
-		 "cmd /c $pgm < $temp_input > $outfile"
-		 );
-    if ( ! $job->run( $timeout/2 ) )
+    my $cmdline = $Web_CAT::Utilities::SHELL
+        . "$pgm < $temp_input > $outfile";
+    print $cmdline, "\n" if ( $debug );
+    my ( $exitcode, $timeout_status ) = Proc::Background::timeout_system(
+        $timeout * 2, $cmdline );
+    if ( $timeout_status )
     {
-	$timeout_occurred++;
+        $timeout_occurred++;
     }
-#    system( "$pgm < $temp_input > $outfile" );
+
 
     #=========================================================================
     # Compare the output to test case expectations
